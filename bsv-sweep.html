@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BSV Sweep Tool</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f7f7fb;
+    --border: #e2e2ea;
+    --accent: #f7931a;
+    --accent2: #ff6b35;
+    --text: #1a1a2e;
+    --muted: #8888a8;
+    --success: #00965c;
+    --error: #d93025;
+    --warn: #b06000;
+    --glow: rgba(247, 147, 26, 0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .logo-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .logo-icon {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    box-shadow: 0 0 24px var(--glow);
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-family: 'SF Mono', Consolas, 'Cascadia Code', monospace;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-top: 0.25rem;
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.6;
+  }
+
+  /* Field groups */
+  .field {
+    margin-bottom: 1.5rem;
+  }
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  label .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  input, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    color: var(--text);
+    font-family: 'SF Mono', Consolas, 'Cascadia Code', monospace;
+    font-size: 0.8rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
+  }
+
+  input:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--glow);
+  }
+
+  input::placeholder {
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+
+  /* WIF input with toggle */
+  .input-wrap {
+    position: relative;
+  }
+
+  .input-wrap input {
+    padding-right: 3rem;
+  }
+
+  .toggle-vis {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.25rem;
+    transition: color 0.2s;
+    line-height: 1;
+  }
+
+  .toggle-vis:hover { color: var(--accent); }
+
+  /* Network toggle */
+  .network-toggle {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .net-btn {
+    flex: 1;
+    padding: 0.65rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: 'SF Mono', Consolas, 'Cascadia Code', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+
+  .net-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+  }
+
+  /* Info box */
+  .info-box {
+    background: rgba(247,147,26,0.06);
+    border: 1px solid rgba(247,147,26,0.2);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    font-family: 'SF Mono', Consolas, 'Cascadia Code', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    display: none;
+  }
+
+  .info-box.show { display: block; }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.2rem 0;
+  }
+
+  .info-row + .info-row {
+    border-top: 1px solid rgba(247,147,26,0.1);
+    margin-top: 0.3rem;
+    padding-top: 0.5rem;
+  }
+
+  .info-label { color: var(--muted); }
+  .info-val { color: var(--text); font-weight: 700; }
+  .info-val.accent { color: var(--accent); }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 1.5rem 0;
+  }
+
+  /* Button */
+  .btn {
+    width: 100%;
+    padding: 1rem;
+    border: none;
+    border-radius: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.03em;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #000;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 32px rgba(247,147,26,0.4);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.8rem;
+    padding: 0.65rem;
+    margin-top: 0.5rem;
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(0,0,0,0.15);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 0.5rem;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Log / status */
+  .log-panel {
+    margin-top: 1.5rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    font-family: 'SF Mono', Consolas, 'Cascadia Code', monospace;
+    font-size: 0.72rem;
+    max-height: 220px;
+    overflow-y: auto;
+    display: none;
+  }
+
+  .log-panel.show { display: block; }
+
+  .log-line {
+    padding: 0.25rem 0;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    line-height: 1.5;
+  }
+
+  .log-time { color: var(--muted); flex-shrink: 0; }
+  .log-msg { color: var(--text); word-break: break-all; }
+  .log-msg.ok { color: var(--success); }
+  .log-msg.err { color: var(--error); }
+  .log-msg.warn { color: var(--warn); }
+  .log-msg.info { color: var(--accent); }
+
+  /* Result box */
+  .result-box {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 10px;
+    font-family: 'SF Mono', Consolas, 'Cascadia Code', monospace;
+    font-size: 0.75rem;
+    display: none;
+    word-break: break-all;
+  }
+
+  .result-box.success {
+    display: block;
+    background: rgba(0,214,143,0.08);
+    border: 1px solid rgba(0,214,143,0.3);
+    color: var(--success);
+  }
+
+  .result-box.error {
+    display: block;
+    background: rgba(255,71,87,0.08);
+    border: 1px solid rgba(255,71,87,0.3);
+    color: var(--error);
+  }
+
+  .result-title {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.4rem;
+    opacity: 0.7;
+  }
+
+  .txid-link {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--accent);
+    word-break: break-all;
+  }
+
+  .txid-link:hover { opacity: 0.8; }
+
+  /* Fee rate */
+  .fee-auto-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(247,147,26,0.07);
+    border: 1px solid rgba(247,147,26,0.2);
+    border-radius: 8px;
+    padding: 0.65rem 0.9rem;
+    font-family: 'SF Mono', Consolas, 'Cascadia Code', monospace;
+    font-size: 0.78rem;
+    color: var(--accent);
+  }
+
+  .fee-manual-wrap {
+    display: none;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .fee-manual-wrap input {
+    flex: 1;
+  }
+
+  .fee-manual-unit {
+    font-family: 'SF Mono', Consolas, 'Cascadia Code', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .advanced-toggle {
+    margin-left: auto;
+    font-size: 0.68rem;
+    color: var(--accent);
+    cursor: pointer;
+    letter-spacing: 0;
+    text-transform: none;
+    font-weight: 600;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: 'SF Mono', Consolas, 'Cascadia Code', monospace;
+    line-height: 1;
+  }
+
+  .advanced-toggle:hover { opacity: 0.65; }
+
+  /* Warning banner */
+  .warn-banner {
+    background: rgba(255,165,2,0.08);
+    border: 1px solid rgba(255,165,2,0.25);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    color: var(--warn);
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    font-family: 'SF Mono', Consolas, 'Cascadia Code', monospace;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="logo-row">
+      <div class="logo-icon">₿</div>
+      <h1>BSV Sweep</h1>
+    </div>
+    <div class="subtitle">Bitcoin SV · Sweep Tool · Transfers all coins to a new address</div>
+  </div>
+
+  <div class="warn-banner">
+    <span>⚠</span>
+    <span>This tool sweeps all UTXOs from the source address to the destination. Your private key is used locally only and never sent to any server. Use in a trusted environment.</span>
+  </div>
+
+  <div class="card">
+
+    <!-- Network -->
+    <div class="field">
+      <label><span class="dot"></span>Network</label>
+      <div class="network-toggle">
+        <button class="net-btn active" id="btn-main" onclick="setNetwork('main')">Mainnet</button>
+        <button class="net-btn" id="btn-test" onclick="setNetwork('test')">Testnet</button>
+      </div>
+    </div>
+
+    <!-- WIF -->
+    <div class="field">
+      <label><span class="dot"></span>Private Key (WIF or Hex)</label>
+      <div class="input-wrap">
+        <input type="password" id="wif" placeholder="WIF (L/K/5...) or 32-byte hex" autocomplete="off" spellcheck="false" oninput="onWifInput()" />
+        <button class="toggle-vis" onclick="toggleVis()" title="Show/Hide">👁</button>
+      </div>
+    </div>
+
+    <!-- Derived address -->
+    <div class="info-box" id="addr-box">
+      <div class="info-row">
+        <span class="info-label">Derived Address</span>
+        <a class="info-val accent" id="derived-addr" href="#" target="_blank"
+           style="font-size:0.68rem;text-align:right;max-width:300px;word-break:break-all;color:var(--accent);text-decoration:none;border-bottom:1px dashed rgba(247,147,26,0.5);"></a>
+      </div>
+    </div>
+
+    <!-- Destination -->
+    <div class="field" style="margin-top:1.5rem">
+      <label><span class="dot"></span>Destination Address</label>
+      <input type="text" id="dest" placeholder="BSV destination address (1...)" autocomplete="off" spellcheck="false" />
+    </div>
+
+    <!-- Fee rate -->
+    <div class="field">
+      <label><span class="dot"></span>Fee Rate
+        <button class="advanced-toggle" id="fee-toggle" onclick="toggleFeeMode()">Advanced ▸</button>
+      </label>
+      <div class="fee-auto-badge" id="fee-auto-row">
+        <span>⚡</span><span>Auto · LivePolicy</span>
+      </div>
+      <div class="fee-manual-wrap" id="fee-manual-row">
+        <input type="number" id="fee-manual" placeholder="e.g. 1.5" min="0.1" step="0.1" />
+        <span class="fee-manual-unit">sat/KB</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Preview button -->
+    <button class="btn btn-primary" id="btn-preview" onclick="doPreview()">
+      Check Balance &amp; Preview
+    </button>
+
+    <div class="info-box" id="preview-box" style="margin-top:1rem">
+      <div class="info-row">
+        <span class="info-label">Source Balance</span>
+        <span class="info-val accent" id="pv-balance">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">UTXOs</span>
+        <span class="info-val" id="pv-utxo">—</span>
+      </div>
+      <div class="info-row" id="row-dest-balance" style="display:none">
+        <span class="info-label">Destination Balance</span>
+        <span class="info-val" id="pv-dest-balance">—</span>
+      </div>
+      <div class="info-row" id="row-fee" style="display:none">
+        <span class="info-label">Est. Miner Fee</span>
+        <span class="info-val" id="pv-fee">—</span>
+      </div>
+      <div class="info-row" id="row-net" style="display:none">
+        <span class="info-label">Net Amount</span>
+        <span class="info-val accent" id="pv-net">—</span>
+      </div>
+    </div>
+
+    <!-- Sweep button -->
+    <button class="btn btn-primary" id="btn-sweep" onclick="doSweep()" disabled style="margin-top:0.75rem">
+      Execute Sweep
+    </button>
+
+    <!-- Log panel -->
+    <div class="log-panel" id="log-panel"></div>
+
+    <!-- Result -->
+    <div class="result-box" id="result-box"></div>
+  </div>
+
+  <div style="text-align:center;margin-top:1.5rem;font-size:0.7rem;color:var(--muted);font-family:'Space Mono',monospace;">
+    powered by @bsv/sdk · WhatsOnChain API
+  </div>
+</div>
+
+<script type="module">
+// ─── Load @bsv/sdk from esm.sh ─────────────────────────────────────────────
+let BSV = null;
+
+async function loadSDK() {
+  log('Loading @bsv/sdk...', 'info');
+  try {
+    BSV = await import('https://esm.sh/@bsv/sdk@2.0.5');
+    log('SDK loaded ✓', 'ok');
+  } catch (e) {
+    log('SDK load failed: ' + e.message, 'err');
+    throw e;
+  }
+}
+
+// ─── Parse private key (WIF or 32-byte hex) ──────────────────────────────────
+function parsePrivKey(str) {
+  str = str.trim();
+  // Try WIF
+  try { return BSV.PrivateKey.fromWif(str); } catch {}
+  // Try raw hex (64 hex chars = 32 bytes)
+  if (/^[0-9a-fA-F]{64}$/.test(str)) {
+    try { if (BSV.PrivateKey.fromHex) return BSV.PrivateKey.fromHex(str); } catch {}
+    try { return new BSV.PrivateKey(str); } catch {}
+  }
+  throw new Error('Invalid private key format (WIF or 32-byte hex expected)');
+}
+
+// ─── State ──────────────────────────────────────────────────────────────────
+let network = 'main';
+let utxos = [];
+let sourceTxCache = {};
+let previewData = null;
+
+// ─── Expose globals ──────────────────────────────────────────────────────────
+window.setNetwork = (n) => {
+  network = n;
+  document.getElementById('btn-main').classList.toggle('active', n === 'main');
+  document.getElementById('btn-test').classList.toggle('active', n === 'test');
+  document.getElementById('addr-box').classList.remove('show');
+  document.getElementById('preview-box').classList.remove('show');
+  document.getElementById('btn-sweep').disabled = true;
+  previewData = null;
+  utxos = [];
+  document.getElementById('wif').dispatchEvent(new Event('input'));
+};
+
+window.toggleVis = () => {
+  const inp = document.getElementById('wif');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+};
+
+window.toggleFeeMode = () => {
+  const autoRow = document.getElementById('fee-auto-row');
+  const manualRow = document.getElementById('fee-manual-row');
+  const toggle = document.getElementById('fee-toggle');
+  const isManual = manualRow.style.display !== 'none';
+  autoRow.style.display = isManual ? '' : 'none';
+  manualRow.style.display = isManual ? 'none' : 'flex';
+  toggle.textContent = isManual ? 'Advanced ▸' : '◂ Auto';
+};
+
+window.updateFeeLabel = () => {}; // no-op, kept for safety
+
+window.onWifInput = () => {
+  const wif = document.getElementById('wif').value.trim();
+  const box = document.getElementById('addr-box');
+  if (!BSV || !wif) { box.classList.remove('show'); return; }
+  try {
+    const priv = parsePrivKey(wif);
+    const addr = network === 'test' ? priv.toAddress([0x6f]) : priv.toAddress();
+    const addrStr = typeof addr === 'string' ? addr : addr.toString();
+    const explorerBase = network === 'main'
+      ? 'https://whatsonchain.com/address/'
+      : 'https://test.whatsonchain.com/address/';
+    const link = document.getElementById('derived-addr');
+    link.textContent = addrStr;
+    link.href = explorerBase + addrStr;
+    box.classList.add('show');
+  } catch {
+    box.classList.remove('show');
+  }
+};
+
+window.doPreview = async () => {
+  clearLog();
+  clearResult();
+  document.getElementById('preview-box').classList.remove('show');
+  document.getElementById('btn-sweep').disabled = true;
+  previewData = null;
+  utxos = [];
+  sourceTxCache = {};
+
+  const wif = document.getElementById('wif').value.trim();
+  const dest = document.getElementById('dest').value.trim();
+
+  if (!wif) { showResult('error', 'Please enter a private key'); return; }
+
+  setLoading('btn-preview', true, 'Querying...');
+  showLog();
+
+  try {
+    if (!BSV) await loadSDK();
+
+    // Derive address
+    const priv = parsePrivKey(wif);
+    let addr;
+    try {
+      addr = (network === 'test' ? priv.toAddress([0x6f]) : priv.toAddress()).toString();
+    } catch {
+      addr = (network === 'test' ? priv.toPublicKey().toAddress([0x6f]) : priv.toPublicKey().toAddress()).toString();
+    }
+    log('Source address: ' + addr, 'info');
+
+    // Fetch UTXOs from WhatsOnChain
+    const wocNet = network === 'main' ? 'main' : 'test';
+    log('Fetching UTXOs...', 'info');
+    const resp = await fetch(
+      `https://api.whatsonchain.com/v1/bsv/${wocNet}/address/${addr}/unspent`,
+      { headers: { 'Accept': 'application/json' } }
+    );
+    if (!resp.ok) throw new Error(`WoC API error: ${resp.status}`);
+    utxos = await resp.json();
+
+    if (!utxos || utxos.length === 0) {
+      log('No UTXOs found for this address', 'warn');
+      showResult('error', 'No balance (0 UTXOs)');
+      return;
+    }
+
+    log(`Found ${utxos.length} UTXO(s)`, 'ok');
+
+    const totalSats = utxos.reduce((s, u) => s + u.value, 0);
+
+    document.getElementById('pv-utxo').textContent = utxos.length;
+    document.getElementById('pv-balance').textContent = (totalSats / 1e8).toFixed(8) + ' BSV';
+
+    // Fee / net rows — only when destination is provided
+    const hasDest = !!dest;
+    document.getElementById('row-dest-balance').style.display = hasDest ? '' : 'none';
+    document.getElementById('row-fee').style.display = hasDest ? '' : 'none';
+    document.getElementById('row-net').style.display = hasDest ? '' : 'none';
+
+    if (hasDest) {
+      // Estimate fee using LivePolicy value if available, else fallback
+      let estimateFeeRate = 1.0011;
+      try {
+        const isManual = document.getElementById('fee-manual-row').style.display !== 'none';
+        const manualRate = parseFloat(document.getElementById('fee-manual').value);
+        if (isManual && manualRate > 0) {
+          estimateFeeRate = manualRate;
+        } else if (BSV.LivePolicy) {
+          const lp = new BSV.LivePolicy();
+          if (typeof lp.value === 'number' && lp.value > 0) estimateFeeRate = lp.value;
+        }
+      } catch {}
+
+      const estimatedBytes = utxos.length * 148 + 34 + 10;
+      const estimatedFee = Math.ceil(estimatedBytes * estimateFeeRate / 1000);
+      const netSats = totalSats - estimatedFee;
+
+      if (netSats <= 0) {
+        showResult('error', 'Insufficient balance to cover miner fee');
+        return;
+      }
+
+      previewData = { addr, priv, totalSats, estimatedFee, netSats };
+      document.getElementById('pv-fee').textContent = estimatedFee + ' sat ≈ ' + (estimatedFee / 1e8).toFixed(8) + ' BSV';
+      document.getElementById('pv-net').textContent = (netSats / 1e8).toFixed(8) + ' BSV';
+
+      // Query destination address balance
+      log('Fetching destination balance...', 'info');
+      document.getElementById('pv-dest-balance').textContent = 'Loading...';
+      try {
+        const destResp = await fetch(
+          `https://api.whatsonchain.com/v1/bsv/${wocNet}/address/${dest}/unspent`,
+          { headers: { 'Accept': 'application/json' } }
+        );
+        if (destResp.ok) {
+          const destUtxos = await destResp.json();
+          const destBal = (destUtxos || []).reduce((s, u) => s + u.value, 0);
+          document.getElementById('pv-dest-balance').textContent = (destBal / 1e8).toFixed(8) + ' BSV';
+          log('Destination balance: ' + (destBal / 1e8).toFixed(8) + ' BSV', 'info');
+        } else {
+          document.getElementById('pv-dest-balance').textContent = 'Failed';
+        }
+      } catch {
+        document.getElementById('pv-dest-balance').textContent = 'Failed';
+      }
+
+      document.getElementById('btn-sweep').disabled = false;
+      log('Preview ready — execute sweep when ready', 'ok');
+    } else {
+      previewData = null;
+      document.getElementById('btn-sweep').disabled = true;
+      log('Balance loaded. Enter a destination address to enable sweep.', 'ok');
+    }
+
+    document.getElementById('preview-box').classList.add('show');
+  } catch (e) {
+    log('Error: ' + e.message, 'err');
+    showResult('error', e.message);
+  } finally {
+    setLoading('btn-preview', false, 'Check Balance &amp; Preview');
+  }
+};
+
+window.doSweep = async () => {
+  if (!previewData || !utxos.length) return;
+  clearResult();
+
+  const dest = document.getElementById('dest').value.trim();
+  const { addr, priv } = previewData;
+
+  // Determine fee model
+  const isManual = document.getElementById('fee-manual-row').style.display !== 'none';
+  const manualRate = parseFloat(document.getElementById('fee-manual').value);
+  const feeModel = (isManual && manualRate > 0)
+    ? new BSV.SatoshisPerKilobyte(manualRate)
+    : (BSV.LivePolicy ? new BSV.LivePolicy() : new BSV.SatoshisPerKilobyte(1.0011));
+
+  setLoading('btn-sweep', true, 'Broadcasting...');
+  document.getElementById('btn-preview').disabled = true;
+
+  try {
+    const wocNet = network === 'main' ? 'main' : 'test';
+    log('Fetching source transactions...', 'info');
+
+    // Fetch all source transactions
+    const txHashes = [...new Set(utxos.map(u => u.tx_hash))];
+    for (const txHash of txHashes) {
+      if (sourceTxCache[txHash]) continue;
+      log('Fetching tx: ' + txHash.slice(0, 16) + '...', 'info');
+      const r = await fetch(
+        `https://api.whatsonchain.com/v1/bsv/${wocNet}/tx/${txHash}/hex`
+      );
+      if (!r.ok) throw new Error(`Failed to fetch tx ${txHash}: ${r.status}`);
+      const hex = (await r.text()).trim();
+      sourceTxCache[txHash] = BSV.Transaction.fromHex(hex);
+    }
+
+    log('Building transaction...', 'info');
+    const tx = new BSV.Transaction();
+
+    for (const utxo of utxos) {
+      const sourceTx = sourceTxCache[utxo.tx_hash];
+      tx.addInput({
+        sourceTransaction: sourceTx,
+        sourceOutputIndex: utxo.tx_pos,
+        unlockingScriptTemplate: new BSV.P2PKH().unlock(priv),
+      });
+    }
+
+    // Single output: all to destination, change=true auto-calculates fee
+    tx.addOutput({
+      lockingScript: new BSV.P2PKH().lock(dest),
+      change: true,
+    });
+
+    log('Calculating fee...', 'info');
+    await tx.fee(feeModel);
+    log('Signing transaction...', 'info');
+    await tx.sign();
+
+    const txHex = tx.toHex();
+    log('Tx size: ' + (txHex.length / 2) + ' bytes', 'info');
+
+    log('Broadcasting via WhatsOnChain...', 'info');
+
+    // Broadcast via WhatsOnChain
+    const bcastResp = await fetch(
+      `https://api.whatsonchain.com/v1/bsv/${wocNet}/tx/raw`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ txhex: txHex }),
+      }
+    );
+
+    const bcastText = await bcastResp.text();
+    let txid;
+    try { txid = JSON.parse(bcastText); } catch { txid = bcastText; }
+    if (typeof txid === 'object' && txid.txid) txid = txid.txid;
+    txid = String(txid).replace(/"/g, '').trim();
+
+    if (!txid || txid.length < 60) {
+      throw new Error('Broadcast failed: ' + bcastText);
+    }
+
+    log('Broadcast successful! TXID: ' + txid, 'ok');
+
+    const explorerBase = network === 'main'
+      ? 'https://whatsonchain.com/tx/'
+      : 'https://test.whatsonchain.com/tx/';
+
+    showResult('success',
+      `<div class="result-title">✅ Transaction broadcast successfully</div>` +
+      `TXID: <a class="txid-link" href="${explorerBase}${txid}" target="_blank">${txid}</a>`
+    );
+
+    // Disable sweep after success
+    document.getElementById('btn-sweep').disabled = true;
+    utxos = [];
+    previewData = null;
+  } catch (e) {
+    log('Error: ' + e.message, 'err');
+    showResult('error', '❌ ' + e.message);
+  } finally {
+    setLoading('btn-sweep', false, 'Execute Sweep');
+    document.getElementById('btn-preview').disabled = false;
+  }
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function log(msg, type = '') {
+  const panel = document.getElementById('log-panel');
+  const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-time">${now}</span><span class="log-msg ${type}">${escHtml(msg)}</span>`;
+  panel.appendChild(line);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('log-panel').innerHTML = '';
+}
+
+function showLog() {
+  document.getElementById('log-panel').classList.add('show');
+}
+
+function clearResult() {
+  const box = document.getElementById('result-box');
+  box.className = 'result-box';
+  box.innerHTML = '';
+}
+
+function showResult(type, html) {
+  const box = document.getElementById('result-box');
+  box.className = 'result-box ' + type;
+  box.innerHTML = html;
+}
+
+function setLoading(id, loading, label) {
+  const btn = document.getElementById(id);
+  btn.disabled = loading;
+  btn.innerHTML = loading
+    ? `<span class="spinner"></span>${label}`
+    : label;
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Boot ────────────────────────────────────────────────────────────────────
+showLog();
+loadSDK().then(() => {
+  // trigger address derivation if wif already filled
+  document.getElementById('wif').dispatchEvent(new Event('input'));
+}).catch(() => {});
+</script>
+</body>
+</html>
